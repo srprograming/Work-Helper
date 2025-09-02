@@ -1,14 +1,15 @@
-# jsonify ইম্পোর্ট করা হয়েছে
 from flask import Flask, request, redirect, session, render_template, jsonify
 import requests
 import os
 
 app = Flask(__name__)
-app.secret_key = 'your_random_secret_key'
+# SECRET_KEY এখন এনভায়রনমেন্ট ভেরিয়েবল থেকে লোড হচ্ছে
+app.secret_key = os.environ.get('SECRET_KEY', 'a_default_secret_key_for_development')
 
-APP_ID = '31248515161431111'
-APP_SECRET = '3b91b90eeeacacbff3205dace2860df6'
-REDIRECT_URI = 'http://localhost:5000/callback'
+# --- এনভায়রনমেন্ট ভেরিয়েবল থেকে তথ্য লোড করা হচ্ছে ---
+APP_ID = os.environ.get('APP_ID')
+APP_SECRET = os.environ.get('APP_SECRET')
+REDIRECT_URI = os.environ.get('REDIRECT_URI')
 
 @app.route('/')
 def home():
@@ -43,24 +44,20 @@ def upload_video_to_facebook(page_id, page_access_token, video_file, description
     try:
         endpoint = 'video_reels' if post_type == 'reel' else 'videos'
         init_url = f"https://graph.facebook.com/{page_id}/{endpoint}"
-        
         init_params = {
             'access_token': page_access_token,
             'upload_phase': 'start',
             'file_size': os.fstat(video_file.fileno()).st_size
         }
         init_response = requests.post(init_url, params=init_params).json()
-        
         upload_session_id = init_response['upload_session_id']
         transfer_url = init_response.get('upload_url')
         if not transfer_url:
             video_id = init_response['video_id']
             transfer_url = f"https://graph-video.facebook.com/{video_id}"
-
         headers = {'Authorization': f'OAuth {page_access_token}'}
         files = {'video_file': video_file}
         requests.post(transfer_url, headers=headers, files=files)
-        
         finish_params = {
             'access_token': page_access_token,
             'upload_phase': 'finish',
@@ -68,7 +65,6 @@ def upload_video_to_facebook(page_id, page_access_token, video_file, description
             'description': description
         }
         finish_response = requests.post(init_url, params=finish_params).json()
-
         return finish_response.get('success', False)
     except Exception as e:
         print(f"Video/Reel upload failed: {e}")
@@ -91,10 +87,8 @@ def post_to_pages():
     
     post_count = 0
     total_selected = len(selected_pages)
-    
     for page in selected_pages:
         page_id, page_access_token = page.split('|')
-        
         is_video = media_file and media_file.content_type and media_file.content_type.startswith('video/')
         is_photo = media_file and media_file.content_type and media_file.content_type.startswith('image/')
         
@@ -111,28 +105,22 @@ def post_to_pages():
                 response.raise_for_status()
                 post_count += 1
                 media_file.seek(0)
-            else: # Text-only post
+            else:
                 post_url = f"https://graph.facebook.com/{page_id}/feed"
                 params = {'message': message, 'access_token': page_access_token}
                 response = requests.post(post_url, params=params)
                 response.raise_for_status()
                 post_count += 1
-            
             print(f"Successfully initiated post for page ID: {page_id}")
-            
         except requests.exceptions.RequestException as e:
             print(f"Failed to post to page ID: {page_id}. Error: {e.response.text if e.response else e}")
             
     if post_count > 0:
-        return jsonify({
-            'status': 'success',
-            'message': f'Successfully initiated posts for {post_count} out of {total_selected} pages!'
-        })
+        return jsonify({'status': 'success', 'message': f'Successfully initiated posts for {post_count} out of {total_selected} pages!'})
     else:
-        return jsonify({
-            'status': 'error',
-            'message': 'Failed to post to any of the selected pages. Please check terminal for errors.'
-        }), 400
+        return jsonify({'status': 'error', 'message': 'Failed to post to any of the selected pages. Please check terminal for errors.'}), 400
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    # Render-এর জন্য এই সেটিংসগুলো প্রয়োজন
+    port = int(os.environ.get('PORT', 5000))
+    app.run(debug=False, host='0.0.0.0', port=port)
