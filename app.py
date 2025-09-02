@@ -6,8 +6,8 @@ import os
 app = Flask(__name__)
 app.secret_key = 'your_random_secret_key'
 
-APP_ID = '4430394673855131'
-APP_SECRET = '9c4c2e9020156eb1f285791d1afd593a'
+APP_ID = '31248515161431111'
+APP_SECRET = '3b91b90eeeacacbff3205dace2860df6'
 REDIRECT_URI = 'http://localhost:5000/callback'
 
 @app.route('/')
