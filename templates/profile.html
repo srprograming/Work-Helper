@@ -3,92 +3,370 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard</title>
+    <title>Dashboard - Work Helper</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <style>
-        body { background-color: #f0f2f5; }
-        .container { max-width: 800px; margin: 0 auto; background-color: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); }
-        h1, h2, h3 { color: #1c1e21; }
-        ul { list-style-type: none; padding: 0; }
-        li { background: #f4f4f4; margin: 10px 0; padding: 15px; border-radius: 5px; display: flex; align-items: center; }
-        input[type="checkbox"] { margin-right: 15px; transform: scale(1.2); }
-        textarea { width: 100%; min-height: 100px; padding: 10px; font-size: 1em; border-radius: 5px; border: 1px solid #ddd; margin-top: 10px; }
-        button { background-color: #1877f2; color: white; padding: 10px 20px; border: none; border-radius: 5px; font-size: 1em; cursor: pointer; margin-top: 20px; }
+        body { background-color: #eef2f7; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+        .card { border: none; border-radius: 12px; }
+        .nav-link { color: #555; font-weight: 600; }
+        .nav-tabs .nav-link.active { color: #0d6efd; border-color: #dee2e6 #dee2e6 #fff !important; }
+        .preview-area { display: flex; flex-wrap: wrap; gap: 15px; margin-top: 15px; border: 2px dashed #e0e0e0; padding: 15px; border-radius: 8px; min-height: 140px; background-color: #fafafa; }
+        .preview-item { position: relative; width: 110px; height: 110px; animation: fadeIn 0.5s; }
+        @keyframes fadeIn { from { opacity: 0; transform: scale(0.8); } to { opacity: 1; transform: scale(1); } }
+        .preview-item img, .preview-item video { width: 100%; height: 100%; object-fit: cover; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .remove-btn {
+            position: absolute; top: -8px; right: -8px; width: 24px; height: 24px;
+            background: linear-gradient(135deg, #ff758c 0%, #ff7eb3 100%);
+            color: white; border: 2px solid white; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center; font-size: 14px;
+            cursor: pointer; transition: transform 0.2s; box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        .remove-btn:hover { transform: scale(1.2); }
+        .page-item { transition: background-color 0.2s; }
+        .page-item:hover { background-color: #e9ecef; }
+        #submit-btn {
+            background: linear-gradient(45deg, #0d6efd, #6f42c1);
+            border: none;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+        #submit-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3); }
     </style>
 </head>
 <body>
-    <div class="container mt-5 mb-5">
+    <div class="container my-5">
         <div class="row justify-content-center">
-            <div class="col-lg-8">
-                <div class="card shadow-sm">
+            <div class="col-lg-9">
+                <h1 class="mb-4 text-center fw-bold" style="color: #343a40;">Create New Post</h1>
+
+                <ul class="nav nav-tabs nav-fill mb-3" id="myTab" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="photo-tab" data-bs-toggle="tab" data-bs-target="#photo-pane" type="button"><i class="bi bi-images me-2"></i>Photos</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="video-tab" data-bs-toggle="tab" data-bs-target="#video-pane" type="button"><i class="bi bi-camera-video me-2"></i>Videos</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="reel-tab" data-bs-toggle="tab" data-bs-target="#reel-pane" type="button"><i class="bi bi-film me-2"></i>Reels</button>
+                    </li>
+                </ul>
+
+                <div class="tab-content" id="myTabContent">
+                    <div class="tab-pane fade show active" id="photo-pane" role="tabpanel">
+                        <div class="card"><div class="card-body p-4">
+                            <div class="upload-form" data-type="photo">
+                                <input class="form-control media-input" type="file" accept="image/*" multiple>
+                                <div class="preview-area"></div>
+                            </div>
+                        </div></div>
+                    </div>
+                    <div class="tab-pane fade" id="video-pane" role="tabpanel">
+                        <div class="card"><div class="card-body p-4">
+                            <div class="upload-form" data-type="video">
+                                <input class="form-control media-input" type="file" accept="video/*" multiple>
+                                <div class="preview-area"></div>
+                            </div>
+                        </div></div>
+                    </div>
+                    <div class="tab-pane fade" id="reel-pane" role="tabpanel">
+                        <div class="card"><div class="card-body p-4">
+                            <div class="upload-form" data-type="reel">
+                                <input class="form-control media-input" type="file" accept="video/*" multiple>
+                                <div class="preview-area"></div>
+                            </div>
+                        </div></div>
+                    </div>
+                </div>
+
+                <div class="card mt-4">
                     <div class="card-body p-4">
-                        <div id="post-feedback" class="alert" role="alert" style="display: none;"></div>
-                        
-                        <form id="post-form" action="/schedule_post" method="post" enctype="multipart/form-data">
+                        <div id="post-feedback" class="alert" role="alert" style="display: none; animation: fadeIn 0.5s;"></div>
+                        <form id="schedule-form">
+                            <div class="mb-3">
+                                <label for="message" class="form-label fw-bold">Caption / Title</label>
+                                <textarea id="message" name="message" class="form-control" rows="3" placeholder="This caption will be added to all selected media posts."></textarea>
+                            </div>
                             
-                            <h3>1. Select Pages:</h3>
-                            <div class="list-group mb-3">
-                                {% if pages %}
-                                    {% for page in pages %}
-                                        <div class="page-item">
-                                            <input class="form-check-input" type="checkbox" name="selected_pages" value="{{ page.id }}|{{ page.access_token }}">
-                                            <label class="form-check-label">{{ page.name }}</label>
-                                        </div>
-                                    {% endfor %}
-                                {% else %}
-                                    <p>No pages found.</p>
-                                {% endif %}
+                            <div class="mb-3">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <label class="form-label fw-bold">Select Pages</label>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="select-all-pages">
+                                        <label class="form-check-label" for="select-all-pages">Select All</label>
+                                    </div>
+                                </div>
+                                <div class="list-group mt-2" style="max-height: 200px; overflow-y: auto;">
+                                    {% if pages %}
+                                        {% for page in pages %}
+                                            <div class="page-item list-group-item-action">
+                                                <input class="form-check-input page-checkbox" type="checkbox" name="selected_pages" value="{{ page.id }}|{{ page.access_token }}">
+                                                <label class="form-check-label ms-2">{{ page.name }}</label>
+                                            </div>
+                                        {% endfor %}
+                                    {% else %}
+                                        <p class="text-center text-muted">No pages found.</p>
+                                    {% endif %}
+                                </div>
                             </div>
 
-                            <h3>2. Upload Media (Multiple Files Optional):</h3>
-                            <input type="file" name="media_files" class="form-control" accept="image/*,video/*" multiple>
-                            
-                            <h3>3. Add a Message (Optional):</h3>
-                            <textarea name="message" class="form-control" rows="3" placeholder="This message will be added to all posts."></textarea>
+                            <hr class="my-4">
 
-                            <h3 class="mt-3">4. Set Schedule:</h3>
-                            <div class="row">
-                                <div class="col-md-6 mb-3">
-                                    <label for="start_time" class="form-label">Start Time</label>
-                                    <input type="datetime-local" id="start_time" name="start_time" class="form-control" required>
+                            <div class="form-check form-switch mb-3">
+                                <input class="form-check-input" type="checkbox" role="switch" id="enable-scheduling">
+                                <label class="form-check-label fw-bold" for="enable-scheduling">Enable Scheduling</label>
+                            </div>
+
+                            <div id="schedule-fields" style="display: none;">
+                                <h5 class="fw-bold">Scheduling Options</h5>
+                                <div class="row">
+                                    <div class="col-md-3 mb-3">
+                                        <label for="start_time" class="form-label">Start Time</label>
+                                        <input type="datetime-local" id="start_time" name="start_time" class="form-control">
+                                    </div>
+                                    <div class="col-md-3 mb-3">
+                                        <label for="interval_minutes" class="form-label">Interval (min)</label>
+                                        <input type="number" id="interval_minutes" name="interval_minutes" class="form-control" value="60" min="1">
+                                    </div>
+                                    <div class="col-md-3 mb-3">
+                                        <label for="batch_size" class="form-label">Posts per Interval</label>
+                                        <input type="number" id="batch_size" name="batch_size" class="form-control" value="1" min="1">
+                                    </div>
+                                    <div class="col-md-3 mb-3">
+                                        <label for="time_jitter" class="form-label">Random Delay (± min)</label>
+                                        <input type="number" id="time_jitter" name="time_jitter" class="form-control" value="5" min="0">
+                                    </div>
                                 </div>
-                                <div class="col-md-6 mb-3">
-                                    <label for="interval_minutes" class="form-label">Interval (minutes)</label>
-                                    <input type="number" id="interval_minutes" name="interval_minutes" class="form-control" value="60" min="1" required>
+                            </div>
+                            
+                            <hr class="my-4">
+                            <div class="form-check form-switch mb-2">
+                                <input class="form-check-input" type="checkbox" role="switch" id="enable-auto-delete" name="enable_auto_delete">
+                                <label class="form-check-label fw-bold" for="enable-auto-delete">Auto-delete Post Later</label>
+                            </div>
+                            
+                            <div id="delete-fields" class="row" style="display: none;">
+                                <div class="col-md-6">
+                                    <label for="delete_after_days" class="form-label">Delete after (days)</label>
+                                    <input type="number" id="delete_after_days" name="delete_after_days" class="form-control" value="7" min="1">
                                 </div>
                             </div>
 
                             <div class="d-grid mt-4">
-                                <button type="submit" class="btn btn-primary btn-lg">
-                                    <span id="btn-text">Schedule Posts</span>
+                                <button id="submit-btn" type="submit" class="btn btn-primary btn-lg">
+                                    <span id="btn-text">Publish Now</span>
                                     <span id="btn-spinner" class="spinner-border spinner-border-sm" role="status" aria-hidden="true" style="display: none;"></span>
                                 </button>
                             </div>
                         </form>
                     </div>
                 </div>
+
+                <div class="card mt-4">
+                    <div class="card-body p-4 text-center">
+                        <h5 class="card-title">Advanced Tools</h5>
+                        <p class="card-text text-muted">Use advanced features like bulk content deletion.</p>
+                        <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#bulkDeleteToolModal">
+                            <i class="bi bi-trash3-fill me-2"></i> Launch Bulk Deletion Tool
+                        </button>
+                    </div>
+                </div>
+
             </div>
         </div>
     </div>
-    
-    <script>
-        document.getElementById('post-form').addEventListener('submit', function(event) {
-            event.preventDefault();
 
+    <div class="modal fade" id="bulkDeleteToolModal" tabindex="-1">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title"><i class="bi bi-exclamation-triangle-fill me-2"></i> Bulk Content Deletion Tool</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="delete-feedback" class="alert" role="alert" style="display: none;"></div>
+                    <p class="text-danger"><strong>Warning:</strong> This action is irreversible. It will permanently delete all content from the selected pages.</p>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Select Pages to Erase:</label>
+                        <div class="list-group mt-2" style="max-height: 200px; overflow-y: auto;">
+                            {% if pages %}
+                                <div class="page-item list-group-item-action">
+                                    <input class="form-check-input" type="checkbox" id="delete-select-all-pages">
+                                    <label class="form-check-label ms-2 fw-bold" for="delete-select-all-pages">Select All</label>
+                                </div>
+                                {% for page in pages %}
+                                    <div class="page-item list-group-item-action">
+                                        <input class="form-check-input delete-page-checkbox" type="checkbox" value="{{ page.id }}|{{ page.access_token }}">
+                                        <label class="form-check-label ms-2">{{ page.name }}</label>
+                                    </div>
+                                {% endfor %}
+                            {% else %}
+                                <p class="text-center text-muted">No pages found.</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#confirmDeleteModal">
+                        Start Deletion Process
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="confirmDeleteModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title text-danger">Are you absolutely sure?</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>This will permanently delete all content from the selected pages. This action cannot be undone.</p>
+                    <p>To confirm, please type **DELETE** in the box below.</p>
+                    <input type="text" id="delete-confirm-text" class="form-control">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" id="final-delete-btn" class="btn btn-danger" disabled>I understand, Delete Everything</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // --- Global file store and preview logic ---
+        let fileStore = []; 
+
+        document.querySelectorAll('.media-input').forEach(input => {
+            input.addEventListener('change', event => {
+                const activeTabPane = event.target.closest('.tab-pane');
+                const previewArea = activeTabPane.querySelector('.preview-area');
+                fileStore = [...event.target.files]; // Store the FileList
+                renderPreviews(previewArea, fileStore);
+            });
+        });
+
+        function renderPreviews(previewArea, files) {
+            previewArea.innerHTML = '';
+            files.forEach((file, index) => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const previewItem = document.createElement('div');
+                    previewItem.className = 'preview-item';
+                    let mediaElement;
+                    if (file.type.startsWith('image/')) {
+                        mediaElement = document.createElement('img');
+                    } else if (file.type.startsWith('video/')) {
+                        mediaElement = document.createElement('video');
+                        mediaElement.muted = true;
+                        mediaElement.controls = true;
+                    }
+                    if (mediaElement) {
+                        mediaElement.src = e.target.result;
+                        const removeBtn = document.createElement('button');
+                        removeBtn.className = 'remove-btn';
+                        removeBtn.innerHTML = '&times;';
+                        removeBtn.dataset.index = index;
+                        removeBtn.onclick = removeFile;
+                        previewItem.appendChild(mediaElement);
+                        previewItem.appendChild(removeBtn);
+                        previewArea.appendChild(previewItem);
+                    }
+                }
+                reader.readAsDataURL(file);
+            });
+        }
+
+        function removeFile(event) {
+            const indexToRemove = parseInt(event.target.dataset.index, 10);
+            fileStore.splice(indexToRemove, 1);
+            const activeTabPane = document.querySelector('.tab-pane.active');
+            // Reset the file input visually by clearing its value
+            activeTabPane.querySelector('.media-input').value = "";
+            const previewArea = activeTabPane.querySelector('.preview-area');
+            renderPreviews(previewArea, fileStore);
+        }
+
+        // --- Logic for Toggles and Selectors ---
+        document.getElementById('select-all-pages').addEventListener('change', function(event) {
+            document.querySelectorAll('.page-checkbox').forEach(checkbox => {
+                checkbox.checked = event.target.checked;
+            });
+        });
+        
+        const enableSchedulingCheckbox = document.getElementById('enable-scheduling');
+        const scheduleFieldsDiv = document.getElementById('schedule-fields');
+        const submitButtonText = document.getElementById('btn-text');
+
+        enableSchedulingCheckbox.addEventListener('change', function() {
+            if (this.checked) {
+                scheduleFieldsDiv.style.display = 'block';
+                submitButtonText.innerText = 'Schedule Posts';
+            } else {
+                scheduleFieldsDiv.style.display = 'none';
+                submitButtonText.innerText = 'Publish Now';
+            }
+        });
+
+        const enableAutoDeleteCheckbox = document.getElementById('enable-auto-delete');
+        const deleteFieldsDiv = document.getElementById('delete-fields');
+
+        enableAutoDeleteCheckbox.addEventListener('change', function() {
+            if (this.checked) {
+                deleteFieldsDiv.style.display = 'flex';
+            } else {
+                deleteFieldsDiv.style.display = 'none';
+            }
+        });
+
+        // --- Main Form Submission Logic ---
+        document.getElementById('schedule-form').addEventListener('submit', function(event) {
+            event.preventDefault();
             const form = event.target;
-            const formData = new FormData(form);
+            const formData = new FormData();
+            
+            formData.append('message', document.getElementById('message').value);
+            document.querySelectorAll('.page-checkbox:checked').forEach(checkbox => {
+                formData.append('selected_pages', checkbox.value);
+            });
+
+            if (enableSchedulingCheckbox.checked) {
+                formData.append('start_time', document.getElementById('start_time').value);
+                formData.append('interval_minutes', document.getElementById('interval_minutes').value);
+                formData.append('batch_size', document.getElementById('batch_size').value);
+                formData.append('time_jitter', document.getElementById('time_jitter').value);
+            }
+            
+            if (enableAutoDeleteCheckbox.checked) {
+                formData.append('enable_auto_delete', 'on');
+                formData.append('delete_after_days', document.getElementById('delete_after_days').value);
+            }
+            
+            fileStore.forEach(file => {
+                formData.append('media_files', file);
+            });
+            
+            const activeTabPane = document.querySelector('.tab-pane.active');
+            let postType = 'text';
+            if (fileStore.length > 0) {
+                 postType = activeTabPane.id.replace('-pane', '');
+            }
+            formData.append('post_type', postType);
+
             const feedbackDiv = document.getElementById('post-feedback');
-            const submitButton = form.querySelector('button[type="submit"]');
-            const buttonText = document.getElementById('btn-text');
+            const submitButton = document.getElementById('submit-btn');
             const buttonSpinner = document.getElementById('btn-spinner');
 
-            buttonText.innerText = "Scheduling...";
+            buttonText.innerText = "Processing...";
             buttonSpinner.style.display = 'inline-block';
             submitButton.disabled = true;
             feedbackDiv.style.display = 'none';
 
-            fetch('/schedule_post', {
+            fetch('/submit_post', {
                 method: 'POST',
                 body: formData
             })
@@ -97,6 +375,16 @@
                 feedbackDiv.className = data.status === 'success' ? 'alert alert-success' : 'alert alert-danger';
                 feedbackDiv.innerText = data.message;
                 feedbackDiv.style.display = 'block';
+                if (data.status === 'success') {
+                    fileStore = [];
+                    document.querySelectorAll('.preview-area').forEach(area => area.innerHTML = '');
+                    document.querySelectorAll('.media-input').forEach(input => input.value = '');
+                    form.reset();
+                    enableSchedulingCheckbox.checked = false;
+                    enableSchedulingCheckbox.dispatchEvent(new Event('change'));
+                    enableAutoDeleteCheckbox.checked = false;
+                    enableAutoDeleteCheckbox.dispatchEvent(new Event('change'));
+                }
             })
             .catch(error => {
                 feedbackDiv.className = 'alert alert-danger';
@@ -104,12 +392,62 @@
                 feedbackDiv.style.display = 'block';
             })
             .finally(() => {
-                buttonText.innerText = "Schedule Posts";
                 buttonSpinner.style.display = 'none';
                 submitButton.disabled = false;
-                form.reset();
+                enableSchedulingCheckbox.dispatchEvent(new Event('change'));
+//- .................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................-
             });
         });
+
+        // --- JavaScript for Delete Confirmation ---
+        const confirmInput = document.getElementById('delete-confirm-text');
+        const finalDeleteBtn = document.getElementById('final-delete-btn');
+        
+        confirmInput.addEventListener('input', function() {
+            finalDeleteBtn.disabled = this.value !== 'DELETE';
+        });
+
+        finalDeleteBtn.addEventListener('click', function() {
+            const selectedPages = [];
+            document.querySelectorAll('.delete-page-checkbox:checked').forEach(checkbox => {
+                selectedPages.push(checkbox.value);
+});
+
+            if (selectedPages.length === 0) {
+                alert('Please select at least one page to delete content from.');
+                return;
+            }
+            
+            const deleteFeedbackDiv = document.getElementById('delete-feedback');
+            deleteFeedbackDiv.className = 'alert alert-info';
+            deleteFeedbackDiv.innerText = 'Deletion process has started in the background. This may take a long time.';
+            deleteFeedbackDiv.style.display = 'block';
+
+            fetch('/delete_content', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ pages: selectedPages })
+            })
+            .then(response => response.json())
+            .then(data => {
+                deleteFeedbackDiv.className = data.status === 'success' ? 'alert alert-success' : 'alert alert-danger';
+                deleteFeedbackDiv.innerText = data.message;
+            })
+            .catch(error => {
+                deleteFeedbackDiv.className = 'alert alert-danger';
+                deleteFeedbackDiv.innerText = 'An error occurred during deletion.';
+            });
+
+            const modal = bootstrap.Modal.getInstance(document.getElementById('confirmDeleteModal'));
+            modal.hide();
+        });
+
+        document.getElementById('delete-select-all-pages').addEventListener('change', function(event) {
+            document.querySelectorAll('.delete-page-checkbox').forEach(checkbox => {
+                checkbox.checked = event.target.checked;
+            });
+        });
+
     </script>
 </body>
 </html>
