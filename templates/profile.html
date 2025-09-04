@@ -37,7 +37,7 @@
 
                         <div id="post-feedback" class="alert" role="alert"></div>
 
-                        <form id="post-form">
+                        <form id="post-form" action="/post_to_pages" method="post" enctype="multipart/form-data">
                             <div class="mb-3">
                                 <textarea class="form-control" name="message" rows="4" placeholder="What's on your mind?"></textarea>
                             </div>
@@ -53,7 +53,6 @@
                                 </label>
                             </div>
                             <small class="form-text text-muted mb-3 d-block">Note: 'Reel' option is a UI element. Choose post type below if uploading a video.</small>
-
 
                             <div class="mb-3 border-top pt-3">
                                 <h6>If uploading a video, choose type:</h6>
@@ -139,4 +138,6 @@
                 submitButton.disabled = false;
             });
         });
-    </actions>
+    </script>
+</body>
+</html>
