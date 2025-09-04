@@ -9,7 +9,8 @@ import requests
 
 # --- App & DB Configuration ---
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///posts.db'
+# Render-এর জন্য Production-ready কনফিগারেশন
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///posts.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
@@ -18,6 +19,11 @@ app.secret_key = os.environ.get('SECRET_KEY')
 APP_ID = os.environ.get('APP_ID')
 APP_SECRET = os.environ.get('APP_SECRET')
 REDIRECT_URI = os.environ.get('REDIRECT_URI')
+
+# আপলোড ফোল্ডার তৈরি
+UPLOADS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'uploads')
+if not os.path.exists(UPLOADS_DIR):
+    os.makedirs(UPLOADS_DIR)
 
 # --- Database Model ---
 class ScheduledPost(db.Model):
@@ -32,32 +38,38 @@ class ScheduledPost(db.Model):
     media_type = db.Column(db.String(50), nullable=True) 
     status = db.Column(db.String(50), default='pending')
 
-    def __repr__(self):
-        return f'<Post {self.id}>'
-
 # --- Helper Functions for Posting ---
-def post_media_to_facebook(page_id, page_access_token, file_path, caption, post_type='photo'):
-    if post_type == 'photo':
-        endpoint = 'photos'
-        file_param_name = 'source'
-        caption_param_name = 'caption'
-    else: # for 'video' or 'reel'
-        # Note: This is a simplified video upload. For large files, resumable upload is better.
-        endpoint = 'video_reels' if post_type == 'reel' else 'videos'
-        file_param_name = 'video_file'
-        caption_param_name = 'description'
-
-    post_url = f"https://graph.facebook.com/{page_id}/{endpoint}"
+def post_photo_to_facebook(page_id, page_access_token, file_path, caption):
+    post_url = f"https://graph.facebook.com/v19.0/{page_id}/photos"
     with open(file_path, 'rb') as f:
-        files = {file_param_name: f}
-        params = {caption_param_name: caption, 'access_token': page_access_token}
+        files = {'source': f}
+        params = {'caption': caption, 'access_token': page_access_token}
         response = requests.post(post_url, files=files, params=params)
-    
     response.raise_for_status()
     return response.json()
 
+def upload_video_to_facebook(page_id, page_access_token, video_path, description, post_type='video'):
+    try:
+        endpoint = 'video_reels' if post_type == 'reel' else 'videos'
+        init_url = f"https://graph.facebook.com/v19.0/{page_id}/{endpoint}"
+        init_params = {'access_token': page_access_token, 'upload_phase': 'start', 'file_size': os.path.getsize(video_path)}
+        init_response = requests.post(init_url, params=init_params).json()
+        upload_session_id = init_response['upload_session_id']
+        video_id = init_response['video_id']
+        transfer_url = f"https://graph-video.facebook.com/{video_id}"
+        headers = {'Authorization': f'OAuth {page_access_token}'}
+        with open(video_path, 'rb') as f:
+            files = {'video_file': f}
+            requests.post(transfer_url, headers=headers, files=files)
+        finish_params = {'access_token': page_access_token, 'upload_phase': 'finish', 'upload_session_id': upload_session_id, 'description': description}
+        finish_response = requests.post(init_url, params=finish_params).json()
+        return finish_response
+    except Exception as e:
+        print(f"Video/Reel upload failed: {e}")
+        raise e
+
 def post_text_to_facebook(page_id, page_access_token, message):
-    post_url = f"https://graph.facebook.com/{page_id}/feed"
+    post_url = f"https://graph.facebook.com/v19.0/{page_id}/feed"
     params = {'message': message, 'access_token': page_access_token}
     response = requests.post(post_url, params=params)
     response.raise_for_status()
@@ -98,41 +110,33 @@ def submit_post():
     if 'access_token' not in session: 
         return jsonify({'status': 'error', 'message': 'User not logged in.'}), 401
     
-    # --- Form Data Collection ---
     message = request.form.get('message')
     selected_pages = request.form.getlist('selected_pages')
     media_files = request.files.getlist('media_files')
+    post_type = request.form.get('post_type')
     schedule_time_str = request.form.get('start_time')
     auto_delete_enabled = request.form.get('enable_auto_delete') == 'on'
     delete_after_days = int(request.form.get('delete_after_days', 7))
 
-    # --- Validation ---
     if not selected_pages: return jsonify({'status': 'error', 'message': 'Please select at least one page.'}), 400
     if not message and not (media_files and media_files[0].filename): return jsonify({'status': 'error', 'message': 'Please provide a message or upload at least one file.'}), 400
 
-    # --- Logic for Scheduled Posts ---
     if schedule_time_str:
         interval_minutes = int(request.form.get('interval_minutes', 60))
         batch_size = int(request.form.get('batch_size', 1))
         time_jitter = int(request.form.get('time_jitter', 0))
-        
         start_time = datetime.fromisoformat(schedule_time_str)
         interval = timedelta(minutes=interval_minutes)
         current_schedule_time = start_time
         batch_counter = 0
 
-        # Logic for media files scheduling
         if media_files and media_files[0].filename:
             for media_file in media_files:
                 batch_counter += 1
                 filename = str(uuid.uuid4()) + "_" + media_file.filename
-                uploads_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'uploads')
-                if not os.path.exists(uploads_dir): os.makedirs(uploads_dir)
-                media_path = os.path.join(uploads_dir, filename)
+                media_path = os.path.join(UPLOADS_DIR, filename)
                 media_file.save(media_path)
                 
-                content_type = media_file.content_type
-                media_type = 'reel' if request.form.get('post_type') == 'reel' else ('video' if 'video' in content_type else ('photo' if 'image' in content_type else None))
                 jitter_amount = random.uniform(-time_jitter, time_jitter)
                 final_post_time = current_schedule_time + timedelta(minutes=jitter_amount)
                 delete_time = final_post_time + timedelta(days=delete_after_days) if auto_delete_enabled else None
@@ -142,14 +146,13 @@ def submit_post():
                     new_post = ScheduledPost(
                         message=message, post_time=final_post_time, delete_time=delete_time, page_id=page_id,
                         page_access_token=page_access_token, media_path=media_path,
-                        media_type=media_type, status='pending'
-                    )
+                        media_type=post_type, status='pending')
                     db.session.add(new_post)
                 
                 if batch_counter >= batch_size:
                     current_schedule_time += interval
                     batch_counter = 0
-        else: # Logic for text-only scheduling
+        else:
              final_post_time = start_time
              delete_time = final_post_time + timedelta(days=delete_after_days) if auto_delete_enabled else None
              for page in selected_pages:
@@ -159,44 +162,45 @@ def submit_post():
         
         db.session.commit()
         return jsonify({'status': 'success', 'message': 'Posts scheduled successfully!'})
-
-    # --- Logic for Instant Posts ---
     else:
         post_count = 0
-        total_to_make = len(media_files) * len(selected_pages) if media_files and media_files[0].filename else len(selected_pages)
+        total_to_make = (len(media_files) * len(selected_pages)) if (media_files and media_files[0].filename) else len(selected_pages)
 
-        # Logic for instant media posts
         if media_files and media_files[0].filename:
             for media_file in media_files:
+                filename = str(uuid.uuid4()) + "_" + media_file.filename
+                media_path = os.path.join(UPLOADS_DIR, filename)
+                media_file.save(media_path)
+                
                 for page in selected_pages:
                     page_id, page_access_token = page.split('|')
                     try:
-                        # Save file temporarily to upload
-                        filename = str(uuid.uuid4()) + "_" + media_file.filename
-                        uploads_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'uploads')
-                        if not os.path.exists(uploads_dir): os.makedirs(uploads_dir)
-                        media_path = os.path.join(uploads_dir, filename)
-                        media_file.save(media_path)
-                        media_file.seek(0)
-                        
-                        post_type = request.form.get('post_type')
-                        response_data = post_media_to_facebook(page_id, page_access_token, media_path, message, post_type)
+                        response_data = {}
+                        if post_type == 'photo':
+                            response_data = post_photo_to_facebook(page_id, page_access_token, media_path, message)
+                        elif post_type in ['video', 'reel']:
+                            response_data = upload_video_to_facebook(page_id, page_access_token, media_path, message, post_type)
                         
                         post_count += 1
                         if auto_delete_enabled:
                             post_time = datetime.utcnow()
                             delete_time = post_time + timedelta(days=delete_after_days)
-                            new_entry = ScheduledPost(
-                                facebook_post_id=response_data.get('id') or response_data.get('post_id'), message=message, post_time=post_time, 
-                                delete_time=delete_time, page_id=page_id, page_access_token=page_access_token, status='posted'
-                            )
-                            db.session.add(new_entry)
-                            db.session.commit()
-                        os.remove(media_path) # Clean up the saved file
+                            post_id = response_data.get('id') or response_data.get('post_id')
+                            if post_id:
+                                new_entry = ScheduledPost(
+                                    facebook_post_id=post_id, message=message, post_time=post_time, 
+                                    delete_time=delete_time, page_id=page_id, page_access_token=page_access_token, status='posted')
+                                db.session.add(new_entry)
+                                db.session.commit()
+                        print(f"Successfully posted to page {page_id}")
                     except Exception as e:
                         print(f"Failed to post media to {page_id}. Error: {e}")
-                time.sleep(random.uniform(15,45))
-        # Logic for instant text-only post
+                
+                os.remove(media_path)
+                if post_count < total_to_make:
+                    delay = random.uniform(15, 45)
+                    print(f"Waiting for {delay:.2f} seconds...")
+                    time.sleep(delay)
         else: 
             for page in selected_pages:
                 page_id, page_access_token = page.split('|')
@@ -208,15 +212,13 @@ def submit_post():
                          delete_time = post_time + timedelta(days=delete_after_days)
                          new_entry = ScheduledPost(
                             facebook_post_id=response_data.get('id'), message=message, post_time=post_time, 
-                            delete_time=delete_time, page_id=page_id, page_access_token=page_access_token, status='posted'
-                         )
+                            delete_time=delete_time, page_id=page_id, page_access_token=page_access_token, status='posted')
                          db.session.add(new_entry)
                          db.session.commit()
                 except Exception as e:
                     print(f"Failed to post text to {page_id}. Error: {e}")
         
         return jsonify({'status': 'success', 'message': f'Published {post_count} posts instantly!'})
-
 
 @app.route('/delete_content', methods=['POST'])
 def delete_content():
@@ -230,8 +232,8 @@ def delete_content():
     deleted_count = 0
     for page_data in selected_pages_data:
         page_id, page_access_token = page_data.split('|')
-        feed_url = f"https://graph.facebook.com/{page_id}/feed"
-        params = {'access_token': page_access_token, 'limit': 50}
+        feed_url = f"https://graph.facebook.com/v19.0/{page_id}/feed"
+        params = {'access_token': page_access_token, 'limit': 25}
         
         while feed_url:
             response = requests.get(feed_url, params=params).json()
@@ -255,11 +257,10 @@ def delete_content():
     
     return jsonify({'status': 'success', 'message': f'Deletion process completed. {deleted_count} items were deleted.'})
 
-# --- Main Run Block for Production ---
+# --- Main Run Block ---
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
-    # For local development, use: app.run(debug=True, port=5000)
-    # For Render, Gunicorn will use the 'app' variable. The following is for Render's environment.
+    # This block is for production servers like Render with Gunicorn
     port = int(os.environ.get('PORT', 5000))
     app.run(debug=False, host='0.0.0.0', port=port)
